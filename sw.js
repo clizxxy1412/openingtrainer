@@ -1,7 +1,7 @@
 // Network-first service worker: always tries the live file first so pushed updates show up
 // right away, and falls back to the cache when offline.
 const CACHE = 'ponziani-shell';
-const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
+const ASSETS = ['./move.mp3', './', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
