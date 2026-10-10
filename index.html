@@ -48,6 +48,11 @@ button:focus-visible,.row:focus-visible,.opcard:focus-visible{outline:2px solid 
 .cta b{display:block;font-family:var(--serif);font-size:20px}
 .cta span{display:block;font-size:13.5px;margin-top:2px;opacity:.82}
 .cta:active{transform:scale(.99)}
+.vtag{display:inline-block;font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.2px;color:#0e2a1d;background:var(--mint);border-radius:99px;padding:1px 8px;margin-left:8px;vertical-align:2px;white-space:nowrap}
+.legend{margin:20px 0 0;color:var(--muted);font-size:13.5px}
+.legend .vtag{margin:0 6px 0 0}
+.row.vid{border-left:4px solid var(--mint);background:linear-gradient(90deg,rgba(98,207,164,.13),var(--bg2) 60%)}
+.opcard .meta .vtag{margin-left:0}
 .group h2{font-family:var(--serif);font-size:19px;margin:24px 0 8px;font-weight:700}
 .group h2 small{font-family:var(--sans);font-weight:400;color:var(--muted);font-size:13px;margin-left:6px}
 .row{display:flex;align-items:flex-start;gap:12px;width:100%;text-align:left;padding:13px 14px;margin:0 0 8px;background:var(--bg2);border:1px solid var(--line);border-radius:12px}
@@ -75,7 +80,12 @@ button:focus-visible,.row:focus-visible,.opcard:focus-visible{outline:2px solid 
 .bar{display:flex;align-items:center;gap:6px;padding:8px 10px}
 .bar .back{padding:8px 10px;border-radius:9px;color:var(--muted);font-size:15px;min-width:64px}
 .bar h1{flex:1;margin:0;text-align:center;font-family:var(--serif);font-size:16px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.boardwrap{width:var(--board);margin:0 auto}
+.boardwrap{width:var(--board);margin:0 auto;position:relative}
+#promo{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);z-index:10;display:flex;justify-content:center;gap:10px;padding:14px;background:rgba(27,36,48,.94);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+#promo p{position:absolute;top:-1px;left:0;right:0;transform:translateY(-100%);text-align:center;margin:0;padding:6px;font-size:13px;color:var(--muted);background:rgba(27,36,48,.94)}
+#promo button{width:calc(var(--board)/5.6);height:calc(var(--board)/5.6);border-radius:12px;background:var(--panel);border:1px solid var(--line);font-size:calc(var(--board)/8*.8);line-height:1;font-family:"Apple Symbols","Segoe UI Symbol","Noto Sans Symbols 2","DejaVu Sans",sans-serif}
+#promo button.w{color:#fbf5e4;-webkit-text-stroke:1px #1a222e}
+#promo button.b{color:#161c25;-webkit-text-stroke:.7px #aeb9c8}
 #board{display:grid;grid-template-columns:repeat(8,1fr);width:var(--board);height:var(--board);border-radius:4px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.35);position:relative}
 .sq{position:relative;display:flex;align-items:center;justify-content:center;aspect-ratio:1;min-width:0;min-height:0}
 .sq.l{background:var(--sqL)} .sq.d{background:var(--sqD)}
@@ -144,6 +154,8 @@ button:focus-visible,.row:focus-visible,.opcard:focus-visible{outline:2px solid 
   <button class="cta" id="randomBtn"><b>Random drill</b><span>The opponent picks a line. You play it from memory.</span></button>
   <div id="lines"></div>
   <div class="foot">
+    <div class="switch"><span>Only lines from the videos<br><small style="color:var(--muted)">Random drill picks just the green ones</small></span>
+      <button class="tog" id="vidTog" role="switch" aria-pressed="false" aria-label="Only lines from the videos"></button></div>
     <div class="switch"><span>Include main lines in random drill<br><small style="color:var(--muted)">Equal positions, no trap</small></span>
       <button class="tog" id="mainsTog" role="switch" aria-pressed="false" aria-label="Include main lines"></button></div>
     <button class="linkbtn" id="resetBtn">Reset progress</button>
@@ -156,7 +168,7 @@ button:focus-visible,.row:focus-visible,.opcard:focus-visible{outline:2px solid 
     <h1 id="tTitle"></h1>
     <button class="back" id="sndBtn" aria-label="Toggle sound" style="text-align:right">🔊</button>
   </div>
-  <div class="boardwrap"><div id="board" role="grid" aria-label="Chess board"></div></div>
+  <div class="boardwrap"><div id="board" role="grid" aria-label="Chess board"></div><div id="promo" hidden></div></div>
   <div class="status" aria-live="polite"><p class="main" id="stMain"></p><p class="sub" id="stSub"></p></div>
   <div class="moves" id="moves"></div>
   <div class="acts">
@@ -168,7 +180,7 @@ button:focus-visible,.row:focus-visible,.opcard:focus-visible{outline:2px solid 
 <div id="sheet" hidden></div>
 
 <script>
-const APP_VERSION='2.0.0';
+const APP_VERSION='2.1.0';
 
 //#ENGINE-START
 
@@ -202,7 +214,7 @@ function kingSq(b,color){const k=color==='w'?'K':'k';return b.indexOf(k);}
 function inCheck(pos,color){color=color||pos.turn;return attacked(pos.b,kingSq(pos.b,color),color==='w'?'b':'w');}
 function pseudo(pos,allPromos){
   const b=pos.b,w=pos.turn==='w',out=[];
-  const promos=allPromos?['Q','R','B','N']:['Q'];
+  const promos=allPromos===false?['Q']:['Q','R','B','N'];
   const add=(from,to,p,cap,extra)=>out.push(Object.assign({from,to,p,cap:cap||null,promo:null,ep:false,castle:null},extra));
   for(let i=0;i<64;i++){
     const p=b[i];if(!p||isW(p)!==w)continue;
@@ -306,12 +318,12 @@ function perft(pos,d){
 //#LINES-START
 const PONZIANI=[
 /* ---- 3…Nf6 ---- */
-{id:'f6-mate',group:'3…Nf6',kind:'trap',name:'The mating trap',trap:'6…d6?',result:'Checkmate',
+{id:'f6-mate',video:true,group:'3…Nf6',kind:'trap',name:'The mating trap',trap:'6…d6?',result:'Checkmate',
  blurb:'Ends in checkmate if Black grabs the knight.',
  moves:'e4 e5 Nf3 Nc6 c3 Nf6 d4 Nxe4 d5 Ne7 Nxe5 d6 Bb5+ c6 dxc6 dxe5 cxb7+ Bd7 bxa8=Q Qxa8 Qxd7#',
  idea:'After 5.d5 Ne7 6.Nxe5, Black thinks 6…d6 wins the knight. But 7.Bb5+ c6 8.dxc6 is a nasty surprise. If Black grabs the knight with 8…dxe5, then 9.cxb7+ Bd7 10.bxa8=Q and Qxd7 is mate, with the bishop on b5 guarding d7.',
  hints:{Nxe5:'Win the pawn back. Something on e5 is loose.','Bb5+':'Use a check to drag a pawn forward.',dxc6:'Open lines against the b7 pawn.','cxb7+':'A pawn check that also threatens to promote.','bxa8=Q':'One pawn move can capture and promote.','Qxd7#':'Mate is on the board. Look at your queen.'}},
-{id:'f6-piece',group:'3…Nf6',kind:'trap',name:'Same trap, Black recaptures',trap:'8…Nxc6',result:'Wins a piece',
+{id:'f6-piece',video:true,group:'3…Nf6',kind:'trap',name:'Same trap, Black recaptures',trap:'8…Nxc6',result:'Wins a piece',
  blurb:'If Black recaptures instead, you still end a full piece up.',
  moves:'e4 e5 Nf3 Nc6 c3 Nf6 d4 Nxe4 d5 Ne7 Nxe5 d6 Bb5+ c6 dxc6 Nxc6 Nxc6 bxc6 Bxc6+ Bd7 Bxa8 Qxa8 O-O',
  idea:'If Black recaptures 8…Nxc6 instead of taking the knight, you still come out ahead: 9.Nxc6 bxc6 10.Bxc6+ forks the king and the rook on a8, so you finish a piece up.',
@@ -346,7 +358,7 @@ const PONZIANI=[
  moves:'e4 e5 Nf3 Nc6 c3 Nf6 d4 Nxe4 d5 f5 dxc6 Bc5 Qd5 Bxf2+ Kd1 dxc6 Qxd8+ Kxd8 Nxe5',
  idea:'5…f5? ignores the attack too. 6.dxc6 Bc5 7.Qd5! hits the bishop and the e4 knight, and after 7…Bxf2+ 8.Kd1 dxc6 9.Qxd8+ Kxd8 10.Nxe5 you have won back material and keep a big edge.',
  hints:{dxc6:'Black ignored your threat. Take what is hanging.',Qd5:'A powerful central queen move that attacks two pieces.',Kd1:'Only one king move works well. Think about the d-file.','Qxd8+':'Trade queens with check.',Nxe5:'Pick up the loose pawn.'}},
-{id:'f6-main',group:'3…Nf6',kind:'main',name:'Main line: 6…Ng6',result:'Equal',
+{id:'f6-main',video:true,group:'3…Nf6',kind:'main',name:'Main line: 6…Ng6',result:'Equal',
  blurb:'Quiet and equal. Know it so Black’s best play does not surprise you.',
  moves:'e4 e5 Nf3 Nc6 c3 Nf6 d4 Nxe4 d5 Ne7 Nxe5 Ng6 Qd4 Qf6 Qxe4 Qxe5 Qxe5+ Nxe5 Nd2 d6 Nc4 Nxc4 Bxc4 Be7 O-O',
  idea:'The quiet main line. Black plays accurately and the position is about equal, but it is good to know what happens when Black does not fall for anything.',
@@ -387,7 +399,7 @@ const PONZIANI=[
  moves:'e4 e5 Nf3 Nc6 c3 d5 Qa4 Bd7 exd5 Nb8 Qb3 e4 Ne5 Qc8 d4 exd3 Bxd3 Bd6 O-O',
  idea:'5…Nb8?! retreats but leaves b7 weak: 6.Qb3 and Black cannot hold everything. After 6…e4 7.Ne5 Qc8 8.d4 you keep a big edge.',
  hints:{exd5:'Hit the c6 knight with a pawn.',Qb3:'Target the b7 pawn.',Ne5:'Jump into the center.',d4:'Open the center.','O-O':'Get the king safe.'}},
-{id:'d5-main',group:'3…d5 4.Qa4',kind:'main',name:'Main line: 5…Nd4',result:'Equal',
+{id:'d5-main',video:true,group:'3…d5 4.Qa4',kind:'main',name:'Main line: 5…Nd4',result:'Equal',
  blurb:'Equal. Black finds the best answer to the pin.',
  moves:'e4 e5 Nf3 Nc6 c3 d5 Qa4 Bd7 exd5 Nd4 Qd1 Nxf3+ Qxf3 Nf6 Bc4 e4 Qe2 Bd6 d4 O-O',
  idea:'Black’s best answer to the pin is 4…Bd7, and after 5.exd5 Nd4 uncovers the bishop on your queen. You retreat with Qd1 and get an equal game.',
@@ -418,16 +430,126 @@ const PONZIANI=[
  blurb:'You win the b7 pawn and keep the initiative.',
  moves:'e4 e5 Nf3 Nc6 c3 d6 d4 Bg4 Qb3 exd4 Qxb7 Bd7 Nxd4 Nxd4 cxd4 Qb8 Qb3',
  idea:'3…d6 4.d4 Bg4 5.Qb3: the queen hits b7 and f7 at once. 5…exd4? 6.Qxb7 wins a pawn and attacks the c6 knight and the a8 rook.',
- hints:{d4:'Strike in the center.',Qb3:'Hit two weak pawns with the queen.','Qxb7':'Take the pawn, attacking the knight and the rook.',Nxd4:'Recapture in the center.',cxd4:'Recapture and keep a good structure.'}}
+ hints:{d4:'Strike in the center.',Qb3:'Hit two weak pawns with the queen.','Qxb7':'Take the pawn, attacking the knight and the rook.',Nxd4:'Recapture in the center.',cxd4:'Recapture and keep a good structure.'}},
+
+/* ================= From the videos ================= */
+/* ---- 3…Bc5 ---- */
+{id:'bc-greek',video:true,group:'3…Bc5',kind:'trap',name:'The Greek gift',trap:'7…O-O?!',result:'Big edge',
+ blurb:'Castling walks into a bishop sacrifice. Even the best defence leaves you well ahead (about +2.5).',
+ moves:'e4 e5 Nf3 Nc6 c3 Bc5 d4 exd4 cxd4 Bb4+ Nc3 Nf6 Bd3 O-O e5 Nd5 Bxh7+ Kxh7 Ng5+ Kg8 Qh5 Qxg5 Bxg5 Nxc3 a3',
+ idea:'After 3…Bc5 4.d4 exd4 5.cxd4 Bb4+ 6.Nc3 Nf6 7.Bd3, castling feels safe but walks into a Greek gift: 8.e5 Nd5 9.Bxh7+! Kxh7 10.Ng5+ Kg8 11.Qh5 threatens Qh7#. The best defence is 11…Qxg5 12.Bxg5 Nxc3 and you are still well ahead (about +2.5).',
+ hints:{cxd4:'Recapture with the pawn.',Nc3:'Block the check with a developing move.',Bd3:'Aim a bishop at the kingside.',e5:'Push a pawn to attack the knight.','Bxh7+':'A classic bishop sacrifice on the h-file.','Ng5+':'Bring the knight in with check.',Qh5:'Bring the queen. The threat is mate on h7.',Bxg5:'Recapture with the bishop.',a3:'Kick the bishop.'}},
+{id:'bc-greek-mate',video:true,group:'3…Bc5',kind:'trap',name:'The Greek gift: mating attack',trap:'11…Re8??',result:'Checkmate',
+ blurb:'If Black defends the wrong way, the queen and knight force checkmate.',
+ moves:'e4 e5 Nf3 Nc6 c3 Bc5 d4 exd4 cxd4 Bb4+ Nc3 Nf6 Bd3 O-O e5 Nd5 Bxh7+ Kxh7 Ng5+ Kg8 Qh5 Re8 Qxf7+ Kh8 Qh5+ Kg8 Qh7+ Kf8 Qh8+ Ke7 Qxg7#',
+ idea:'Same Greek gift, but if Black defends with 11…Re8?? then 12.Qxf7+ Kh8 13.Qh5+ Kg8 14.Qh7+ Kf8 15.Qh8+ Ke7 16.Qxg7# is forced mate. Moves like 11…Be7 or 11…Nxe5 allow Qh7# immediately.',
+ hints:{'Bxh7+':'A classic bishop sacrifice on the h-file.','Ng5+':'Bring the knight in with check.',Qh5:'Bring the queen. The threat is mate on h7.','Qxf7+':'Take a pawn with check.','Qh5+':'Check from the long diagonal.','Qh7+':'Keep checking.','Qh8+':'Keep checking.','Qxg7#':'Mate is on the board.'}},
+{id:'bc-main',video:true,group:'3…Bc5',kind:'trap',name:'The big center',trap:'3…Bc5?!',result:'Clear edge',
+ blurb:'Black’s second most common move helps you. You get a huge center (about +0.9).',
+ moves:'e4 e5 Nf3 Nc6 c3 Bc5 d4 exd4 cxd4 Bb4+ Nc3 d5 exd5 Qxd5 Bd3 Bg4 O-O',
+ idea:'3…Bc5 just gives you a tempo: 4.d4 attacks the bishop, and after 4…exd4 5.cxd4 Bb4+ 6.Nc3 d5 7.exd5 Qxd5 8.Bd3 you have a big center and better development. The engine says about +0.9, so it is not winning by force, but it is very comfortable.',
+ hints:{d4:'Strike in the center and hit the bishop.',cxd4:'Recapture with the pawn.',Nc3:'Block the check with a developing move.',exd5:'Take the center pawn.'}},
+/* ---- 3…Nf6: the mating trap and the Bd3 sacrifice ---- */
+{id:'f6-qb6-knight',video:true,group:'3…Nf6',kind:'trap',name:'The knight underpromotion',trap:'8…Qb6?',result:'Wins the queen',
+ blurb:'A pawn promotes to a knight and forks the king and queen.',
+ moves:'e4 e5 Nf3 Nc6 c3 Nf6 d4 Nxe4 d5 Ne7 Nxe5 d6 Bb5+ c6 dxc6 Qb6 cxb7+ Kd8 Nxf7+ Kc7 bxa8=N+ Kb8 Nxb6 axb6 Nxh8',
+ idea:'In the mating trap, 8…Qb6 attacks your bishop and threatens …Qxf2. Keep making checks: 9.cxb7+ Kd8 10.Nxf7+ (an in-between check) Kc7 11.bxa8=N+! promotes to a knight that forks the king and queen. After 12.Nxb6 axb6 13.Nxh8 you are up a mountain of material.',
+ hints:{'cxb7+':'A pawn capture that gives check by uncovering the bishop.','Nxf7+':'Do not promote yet. Black threatens mate, so play another check.','bxa8=N+':'Promote, but not to a queen. Look at what a knight forks.',Nxb6:'Take the queen.',Nxh8:'Pick up the rook.'}},
+{id:'f6-qb6-bd7',video:true,group:'3…Nf6',kind:'trap',name:'Qb6: promote with check',trap:'8…Qb6?',result:'Crushing',
+ blurb:'If Black blocks with the bishop, promoting with check wins everything.',
+ moves:'e4 e5 Nf3 Nc6 c3 Nf6 d4 Nxe4 d5 Ne7 Nxe5 d6 Bb5+ c6 dxc6 Qb6 cxb7+ Bd7 bxa8=Q+ Nc8 Qxc8+ Qd8 Bxd7+ Ke7 Nc6+ Kf6 Qxd8+',
+ idea:'Same 8…Qb6, but if Black blocks with 9…Bd7 then 10.bxa8=Q+ is safe because it comes with check. After 10…Nc8 11.Qxc8+ Qd8 12.Bxd7+ Ke7 13.Nc6+ Kf6 14.Qxd8+ you win everything.',
+ hints:{'cxb7+':'A pawn capture that gives check by uncovering the bishop.','bxa8=Q+':'Now promoting is safe, because it comes with check.','Qxc8+':'Capture with check.','Bxd7+':'Take with check.','Nc6+':'A knight check that also attacks the queen.','Qxd8+':'Take the queen with check.'}},
+{id:'f6-bd7-queen',video:true,group:'3…Nf6',kind:'trap',name:'Blocking with the bishop',trap:'7…Bd7??',result:'Wins the queen',
+ blurb:'Black’s natural block loses the queen.',
+ moves:'e4 e5 Nf3 Nc6 c3 Nf6 d4 Nxe4 d5 Ne7 Nxe5 d6 Bb5+ Bd7 Bxd7+ Qxd7 Nxd7 Kxd7 O-O',
+ idea:'After 6…d6? 7.Bb5+, blocking with 7…Bd7?? loses the queen: 8.Bxd7+ Qxd7 9.Nxd7 Kxd7 and you are a queen for a bishop up.',
+ hints:{'Bb5+':'Use a check to drag a pawn forward.','Bxd7+':'Trade bishops with check.',Nxd7:'Black’s queen has just been captured. Take it back.','O-O':'Get your king safe.'}},
+{id:'f6-bd3-sac',video:true,group:'3…Nf6',kind:'trap',name:'The Bd3 queen sacrifice',trap:'7…Nxf2?',result:'Wins the queen',
+ blurb:'Give up your queen, hunt the king, and win Black’s queen back with interest.',
+ moves:'e4 e5 Nf3 Nc6 c3 Nf6 d4 Nxe4 d5 Ne7 Nxe5 Ng6 Bd3 Nxf2 Bxg6 Nxd1 Bxf7+ Ke7 Bg5+ Kd6 Nc4+ Kc5 Nba3 Nxc3 Bxd8 Nxd5 O-O-O',
+ idea:'After 6…Ng6, 7.Bd3!? is a trick: Black’s best reply is 7…Nxe5, but if Black grabs 7…Nxf2? then 8.Bxg6!! gives up the queen: 8…Nxd1 9.Bxf7+ Ke7 10.Bg5+ Kd6 11.Nc4+ Kc5 and the king is hunted. 12.Nba3 threatens b4#, and even the best defence 12…Nxc3 13.Bxd8 wins Black’s queen and keeps you well ahead.',
+ hints:{Bd3:'Counter-attack the knight on e4 with a bishop.',Bxg6:'Give up the queen! Take the knight with the bishop.','Bxf7+':'Keep the initiative with a check.','Bg5+':'A check that also attacks the queen.','Nc4+':'A knight check.',Nba3:'Bring the last piece in. A pawn move is threatened.',Bxd8:'Take the queen.','O-O-O':'Castle long, with the king safe.'}},
+{id:'f6-bd3-mate',video:true,group:'3…Nf6',kind:'trap',name:'The Bd3 sacrifice: pawn mate',trap:'12…Qxg5??',result:'Checkmate',
+ blurb:'If Black grabs the bishop, a single pawn move is checkmate.',
+ moves:'e4 e5 Nf3 Nc6 c3 Nf6 d4 Nxe4 d5 Ne7 Nxe5 Ng6 Bd3 Nxf2 Bxg6 Nxd1 Bxf7+ Ke7 Bg5+ Kd6 Nc4+ Kc5 Nba3 Qxg5 b4#',
+ idea:'Same queen sacrifice, but if Black takes the bishop with 12…Qxg5?? then 13.b4# is checkmate: the king on c5 has no squares left.',
+ hints:{Bd3:'Counter-attack the knight on e4 with a bishop.',Bxg6:'Give up the queen! Take the knight with the bishop.','Bxf7+':'Keep the initiative with a check.','Bg5+':'A check that also attacks the queen.','Nc4+':'A knight check.',Nba3:'Bring the last piece in. A pawn move is threatened.','b4#':'Mate is on the board. Look at a pawn.'}},
+{id:'f6-bd3-hxg6',video:true,group:'3…Nf6',kind:'trap',name:'The Bd3 sacrifice: Black recaptures',trap:'8…hxg6',result:'Clear edge',
+ blurb:'If Black declines the queen, a discovered check still wins material (about +1.5).',
+ moves:'e4 e5 Nf3 Nc6 c3 Nf6 d4 Nxe4 d5 Ne7 Nxe5 Ng6 Bd3 Nxf2 Bxg6 hxg6 Qe2 Nxh1 Nc6+ Be7 Nxd8 Kxd8 Bf4',
+ idea:'If Black recaptures 8…hxg6 instead of taking the queen, 9.Qe2 attacks the knight on f2. After 9…Nxh1 10.Nc6+ is a discovered check that wins Black’s queen, and you come out clearly ahead (about +1.5).',
+ hints:{Bxg6:'Give up the queen! Take the knight with the bishop.',Qe2:'A queen move that attacks the knight.','Nc6+':'A knight move that uncovers a check.',Nxd8:'Take the queen.',Bf4:'Develop and eye c7.'}},
+{id:'f6-ng6-trade',video:true,group:'3…Nf6',kind:'main',name:'Main line: trade on g6',result:'Slight edge',
+ blurb:'The calm alternative. Your space gives a small but lasting edge (about +0.7).',
+ moves:'e4 e5 Nf3 Nc6 c3 Nf6 d4 Nxe4 d5 Ne7 Nxe5 Ng6 Nxg6 hxg6 Qe2 Qe7 Be3 Nd6 Na3',
+ idea:'The calm alternative after 6…Ng6: trade knights with 7.Nxg6 hxg6 8.Qe2 Qe7 9.Be3, and your space gives a small but lasting edge (about +0.7).',
+ hints:{Nxg6:'Trade off the knight that challenges yours.',Qe2:'A queen move that hits the knight on e4.'}},
+/* ---- 3…Nf6 4…exd4 5.e5 ---- */
+{id:'e5-qe7-greedy',video:true,group:'3…Nf6 · 4…exd4',kind:'trap',name:'The queen on the e-file',trap:'9…Nxe5?',result:'Wins a piece',
+ blurb:'Black’s queen and knight look great on e5, until the e-file opens.',
+ moves:'e4 e5 Nf3 Nc6 c3 Nf6 d4 exd4 e5 Qe7 cxd4 d6 Bb5 Bd7 O-O dxe5 dxe5 Nxe5 Nxe5 Qxe5 Re1 Qxe1+ Qxe1+',
+ idea:'After 4…exd4 5.e5, 5…Qe7 looks great: the queen and knight both hit e5. But 6.cxd4 d6 7.Bb5 counter-pins the c6 knight, and after 7…Bd7 8.O-O dxe5 9.dxe5 the e-file is open. If Black grabs 9…Nxe5? then 10.Nxe5 Qxe5 11.Re1 and the queen is lost to the pin on the e-file: you win material (about +5).',
+ hints:{e5:'Do not recapture yet. Attack the knight with a pawn.',cxd4:'Now recapture. It also protects the e5 pawn.',Bb5:'Counter the pin with a pin of your own.','O-O':'Castle to unpin your pawn.',dxe5:'Recapture with the pawn.',Nxe5:'Take back with the knight.',Re1:'Put a rook on the open file against the queen.','Qxe1+':'Take the rook with check.'}},
+{id:'e5-qe7-best',video:true,group:'3…Nf6 · 4…exd4',kind:'trap',name:'The queen sits on e7',trap:'5…Qe7?!',result:'Clear edge',
+ blurb:'Even with the best defence you trade into a good endgame (about +1.4).',
+ moves:'e4 e5 Nf3 Nc6 c3 Nf6 d4 exd4 e5 Qe7 cxd4 d6 Bb5 Bd7 O-O dxe5 dxe5 Ne4 Qe2 Nc5 Bg5 f6 exf6 Qxe2 Bxe2',
+ idea:'If Black defends better with 9…Ne4 you still keep a clear edge (about +1.4): 10.Qe2 Nc5 11.Bg5 f6 12.exf6 Qxe2 13.Bxe2 and you are better in the endgame.',
+ hints:{e5:'Do not recapture yet. Attack the knight with a pawn.',cxd4:'Now recapture. It also protects the e5 pawn.',Bb5:'Counter the pin with a pin of your own.','O-O':'Castle to unpin your pawn.',Qe2:'Challenge the knight with a queen move.',Bg5:'Develop with a threat.',exf6:'Capture and attack the queen.'}},
+{id:'e5-gambit-qe8',video:true,group:'3…Nf6 · 4…exd4',kind:'trap',name:'The gambit attack',trap:'12…Qe8??',result:'Crushing',
+ blurb:'Black’s pieces are all on the queenside, and the Greek-gift-style attack crashes through.',
+ moves:'e4 e5 Nf3 Nc6 c3 Nf6 d4 exd4 e5 Nd5 Bc4 Nb6 Bb3 dxc3 Nxc3 Bb4 O-O O-O Ng5 h6 Qh5 hxg5 Bxg5 Qe8 Bf6 Qxe5 Bxe5 Nxe5 Qxe5',
+ idea:'After 5.e5 Nd5 6.Bc4 Nb6 7.Bb3 dxc3?! 8.Nxc3 Bb4?! 9.O-O O-O 10.Ng5! h6 11.Qh5 hxg5 12.Bxg5, all of Black’s pieces are on the queenside. If Black moves the queen away with 12…Qe8?? then 13.Bf6! threatens mate and wins (about +6).',
+ hints:{e5:'Do not recapture yet. Attack the knight with a pawn.',Bc4:'Develop with pressure on f7.',Bb3:'Retreat the bishop but keep it on the diagonal.',Nxc3:'Recapture with the knight.','O-O':'Get your king safe.',Ng5:'Jump to the kingside. All of Black’s pieces are far away.',Qh5:'Bring the queen. Black must take the knight.',Bxg5:'Recapture and open the long diagonal.',Bf6:'A bishop move that threatens mate.',Bxe5:'Trade queens in a good way.',Qxe5:'Recapture and keep your extra material.'}},
+{id:'e5-gambit-best',video:true,group:'3…Nf6 · 4…exd4',kind:'trap',name:'The gambit attack: best defence',trap:'8…Bb4?!',result:'Clear edge',
+ blurb:'Dangerous but not forced. You are down material, but the attack keeps going (engine about +1.1).',
+ moves:'e4 e5 Nf3 Nc6 c3 Nf6 d4 exd4 e5 Nd5 Bc4 Nb6 Bb3 dxc3 Nxc3 Bb4 O-O O-O Ng5 h6 Qh5 hxg5 Bxg5 Be7 Bc2 g6 Bxg6 fxg6 Qxg6+ Kh8 Qh5+',
+ idea:'Best defence to the same attack: 12…Be7 13.Bc2 g6 14.Bxg6 fxg6 15.Qxg6+ Kh8 16.Qh5+. You are down material but keep a lasting attack (the engine still gives you about +1.1). This is a dangerous gambit, not a forced win.',
+ hints:{e5:'Do not recapture yet. Attack the knight with a pawn.',Bc4:'Develop with pressure on f7.',Bb3:'Retreat the bishop but keep it on the diagonal.',Nxc3:'Recapture with the knight.','O-O':'Get your king safe.',Ng5:'Jump to the kingside. All of Black’s pieces are far away.',Qh5:'Bring the queen. Black must take the knight.',Bxg5:'Recapture and open the long diagonal.',Bc2:'Retreat to keep the bishop on the b1–h7 diagonal.',Bxg6:'Sacrifice on g6 to rip open the king.','Qxg6+':'Take the pawn with check.'}},
+{id:'e5-bxf7-ke7',video:true,group:'3…Nf6 · 4…exd4',kind:'trap',name:'The bishop sacrifice on f7',trap:'7…Ke7??',result:'Wins the queen',
+ blurb:'A high-risk sacrifice. If the king walks, you win the queen.',
+ moves:'e4 e5 Nf3 Nc6 c3 Nf6 d4 exd4 e5 Nd5 Bc4 Nb6 Bxf7+ Ke7 Bg5+ Kxf7 Bxd8 Nxd8 Nxd4',
+ idea:'The wild 7.Bxf7+ sacrifice: if Black plays 7…Ke7?? then 8.Bg5+ Kxf7 9.Bxd8 wins the queen. But 7…Kxf7! is correct and Black is better afterwards (about -2.4), so the video itself says not to play this in serious games.',
+ hints:{e5:'Do not recapture yet. Attack the knight with a pawn.',Bc4:'Develop with pressure on f7.','Bxf7+':'A bishop sacrifice with check.','Bg5+':'A check that also attacks the queen.',Bxd8:'Take the queen.',Nxd4:'Win back the pawn.'}},
+{id:'e5-qb3-ndb4',video:true,group:'3…Nf6 · 4…exd4',kind:'trap',name:'The Qb3 setup',trap:'6…Ndb4?',result:'Big edge',
+ blurb:'The other way to meet the knight. A slip here gives you a big edge (about +3).',
+ moves:'e4 e5 Nf3 Nc6 c3 Nf6 d4 exd4 e5 Nd5 Qb3 Ndb4 cxb4 Bxb4+ Bd2 Bxd2+ Nbxd2 d6 Bb5',
+ idea:'6.Qb3 is the other setup. If Black plays 6…Ndb4? then 7.cxb4 Bxb4+ 8.Bd2 Bxd2+ 9.Nbxd2 d6 10.Bb5 and you are clearly better (about +3).',
+ hints:{e5:'Do not recapture yet. Attack the knight with a pawn.',Qb3:'Put the queen on the b3–g8 diagonal.',cxb4:'The knight on b4 is just hanging.',Bd2:'Block the check.',Nbxd2:'Recapture and develop.',Bb5:'Pin the knight.'}},
+{id:'e5-qb3-nb6',video:true,group:'3…Nf6 · 4…exd4',kind:'main',name:'The Qb3 setup: best play',result:'Equal',
+ blurb:'Black’s best reply makes it about equal. Know it so you are not lost.',
+ moves:'e4 e5 Nf3 Nc6 c3 Nf6 d4 exd4 e5 Nd5 Qb3 Nb6 cxd4 d6 Bb5 Be6 Qc2 Qd7 Nc3',
+ idea:'6…Nb6 is Black’s best reply to 6.Qb3, and the position is about equal. After 7.cxd4 d6 8.Bb5 Be6 9.Qc2 Qd7 10.Nc3 you have a normal, playable position.',
+ hints:{Qb3:'Put the queen on the b3–g8 diagonal.',cxd4:'Take back the pawn.',Bb5:'Pin the c6 knight.'}},
+/* ---- 3…d5 4.Qa4 ---- */
+{id:'qa4-bd7-qxe4',video:true,group:'3…d5 4.Qa4',kind:'trap',name:'The classic pawn grab',trap:'4…dxe4?!',result:'Wins a pawn',
+ blurb:'Black takes a pawn and breaks the pin the wrong way. You are a clean pawn up (about +2.0).',
+ moves:'e4 e5 Nf3 Nc6 c3 d5 Qa4 dxe4 Nxe5 Bd7 Nxd7 Qxd7 Qxe4+ Be7 d4 Nf6 Qf3 O-O Be2',
+ idea:'4…dxe4?! is already an error. After 5.Nxe5 the c6 knight is pinned. Blocking with 5…Bd7 loses a pawn: 6.Nxd7 Qxd7 7.Qxe4+ and you are a clean pawn up with the bishop pair (about +2.0). If Black attacks your queen, just drop it back and keep developing.',
+ hints:{Qa4:'Pin the c6 knight against the king.',Nxe5:'Take the pawn. The c6 knight is pinned, so Black cannot take back.',Nxd7:'Take the bishop that broke the pin.','Qxe4+':'Take the pawn with check.',d4:'Build the center.',Qf3:'Keep the queen active and safe.'}},
+{id:'qa4-f6-bb5',video:true,group:'3…d5 4.Qa4',kind:'main',name:'The sharp reply: 4…f6',result:'About equal',
+ blurb:'A strange-looking move that is Black’s best. Play actively and you keep the initiative (about +0.5).',
+ moves:'e4 e5 Nf3 Nc6 c3 d5 Qa4 f6 Bb5 dxe4 Bxc6+ bxc6 Qxc6+ Bd7 Qxe4 Ne7 d4',
+ idea:'4…f6 is a ridiculous-looking move, and the computer is happy for Black at first (about equal). The video recommends the aggressive 5.Bb5: after 5…dxe4 6.Bxc6+ bxc6 7.Qxc6+ Bd7 8.Qxe4 Ne7 9.d4 you are a pawn up with the initiative (about +0.5).',
+ hints:{Qa4:'Pin the c6 knight against the king.',Bb5:'Add more pressure to the pinned knight.','Bxc6+':'Take the knight with check.','Qxc6+':'Recapture with check.',Qxe4:'Take back the pawn.',d4:'Build the center.'}},
+/* ---- 3…d6 ---- */
+{id:'d6-pin-a6',video:true,group:'3…d6',kind:'trap',name:'The zigzag: pin the pinner',trap:'8…a6?',result:'Big edge',
+ blurb:'Black’s pin backfires and your pieces pile up. A big edge (about +2.8).',
+ moves:'e4 e5 Nf3 Nc6 c3 d6 d4 exd4 cxd4 Bg4 Qa4 Bxf3 gxf3 Qd7 Bb5 a6 d5 Qc8 Bxc6+ bxc6 Qxc6+ Kd8 Qc3',
+ idea:'After 3…d6 4.d4 exd4 5.cxd4 Bg4, zigzag with 6.Qa4: you escape the pin and pin the c6 knight at the same time. After 6…Bxf3 7.gxf3 Qd7 8.Bb5 you double down, and 8…a6? 9.d5 wins material: 9…Qc8 10.Bxc6+ bxc6 11.Qxc6+ Kd8 12.Qc3 leaves you well ahead (about +2.8).',
+ hints:{d4:'Strike in the center.',cxd4:'Recapture with the pawn.',Qa4:'Get out of the pin with a counter-pin.',gxf3:'Recapture and keep the pawns together.',Bb5:'Double down on the pin.',d5:'Attack the pinned knight with a pawn.','Bxc6+':'Take the pinned knight with check.','Qxc6+':'Recapture with check.',Qc3:'Centralize and keep your extra material.'}}
 ];
 
 const OPENINGS=[
  {id:'ponziani',name:'Ponziani Opening',side:'w',moves:'1.e4 e5 2.Nf3 Nc6 3.c3',
   blurb:'You play White and spring the traps.',
-  groupSub:{'3…Nf6':'Fraser defence','3…d5 4.Qa4':'the pin','3…f5':'countergambit','3…d6':'Philidor-style'},
+  groupOrder:['3…Nf6','3…Nf6 · 4…exd4','3…Bc5','3…d5 4.Qa4','3…f5','3…d6'],
+  groupSub:{'3…Nf6':'Fraser defence','3…Nf6 · 4…exd4':'the e5 shove','3…Bc5':'second most common','3…d5 4.Qa4':'the pin','3…f5':'countergambit','3…d6':'Philidor-style'},
   hintsByPly:{0:'Claim the center with a king’s pawn.',2:'Develop a knight toward the center, attacking the e5 pawn.',4:'A quiet pawn move that prepares a big center.'},
   groupHints:{
-   '3…Nf6':{d4:'Strike in the center before Black settles.',d5:'Kick the knight on c6.'},
+   '3…Nf6':{d4:'Strike in the center before Black settles.',d5:'Kick the knight on c6.',Nxe5:'Win the pawn back.'},
+   '3…Nf6 · 4…exd4':{d4:'Strike in the center.'},
+   '3…Bc5':{d4:'Strike in the center and hit the bishop.'},
    '3…d5 4.Qa4':{Qa4:'Pin the c6 knight against the king.'},
    '3…f5':{d4:'Meet the counter-gambit in the center.'},
    '3…d6':{d4:'Strike in the center.'}},
@@ -440,7 +562,7 @@ const $=id=>document.getElementById(id);
 const GLYPH={K:'\u265A\uFE0E',Q:'\u265B\uFE0E',R:'\u265C\uFE0E',B:'\u265D\uFE0E',N:'\u265E\uFE0E',P:'\u265F\uFE0E'};
 const PN={P:'pawn',N:'knight',B:'bishop',R:'rook',Q:'queen',K:'king'};
 const KEY='ponziani.v1';
-let store=(function(){const d={stats:{},mains:false,sound:true};try{return Object.assign(d,JSON.parse(localStorage.getItem(KEY)||'{}'));}catch(e){return d;}})();
+let store=(function(){const d={stats:{},mains:false,sound:true,vidOnly:false};try{return Object.assign(d,JSON.parse(localStorage.getItem(KEY)||'{}'));}catch(e){return d;}})();
 function save(){try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){}}
 OPENINGS.forEach(o=>o.lines.forEach(l=>{
   l.opening=o;l.sans=l.moves.split(' ');
@@ -483,6 +605,7 @@ initAudio();
 
 /* ---- Views ---- */
 function showView(v){
+  if(typeof hidePromo==='function')hidePromo();
   $('menu').hidden=v!=='menu';$('opening').hidden=v!=='opening';$('train').hidden=v!=='train';$('sheet').hidden=true;
   window.scrollTo(0,0);
 }
@@ -491,35 +614,42 @@ function pipsHTML(n){const full=n>=3;let h='<span class="pips'+(full?' full':'')
 /* ---- Menu ---- */
 function renderMenu(){
   $('ops').innerHTML=OPENINGS.map(o=>{
-    const tot=o.lines.length,done=o.lines.filter(l=>stat(l.id).streak>=3).length;
+    const tot=o.lines.length,done=o.lines.filter(l=>stat(l.id).streak>=3).length,vids=o.lines.filter(l=>l.video).length;
     return '<button class="opcard" data-op="'+o.id+'"><b>'+o.name+'</b><span class="sub">You play '+(o.side==='w'?'White':'Black')+' · '+o.moves+'</span>'+
-      '<span class="meta"><span>'+tot+' lines</span><span class="bar2"><i style="width:'+Math.round(100*done/tot)+'%"></i></span><span>'+done+' mastered</span></span></button>';
+      '<span class="meta"><span>'+tot+' lines'+(vids?' · <span class="vtag">'+vids+' from the videos</span>':'')+'</span><span class="bar2"><i style="width:'+Math.round(100*done/tot)+'%"></i></span><span>'+done+' mastered</span></span></button>';
   }).join('');
 }
 $('ops').addEventListener('click',e=>{const c=e.target.closest('.opcard');if(!c)return;openOpening(OPENINGS.find(o=>o.id===c.dataset.op));});
 
 /* ---- Opening (line list) ---- */
 function openOpening(o){curOp=o;renderOpening();showView('opening');}
-function chipCls(l){return l.kind==='main'?'chip eq':(/Checkmate|queen|Big edge/.test(l.result)?'chip big':'chip');}
+function chipCls(l){return l.kind==='main'?'chip eq':(/Checkmate|queen|Big edge|Crushing/.test(l.result)?'chip big':'chip');}
 function renderOpening(){
   const o=curOp;
   $('opTitle').textContent=o.name;
   $('opSub').textContent='You play '+(o.side==='w'?'White':'Black')+' · '+o.moves;
   const groups=[];o.lines.forEach(l=>{let g=groups.find(x=>x.name===l.group);if(!g){g={name:l.group,items:[]};groups.push(g);}g.items.push(l);});
-  $('lines').innerHTML=groups.map(g=>'<section class="group"><h2>'+g.name+(o.groupSub[g.name]?'<small>'+o.groupSub[g.name]+'</small>':'')+'</h2>'+
-    g.items.map(l=>'<button class="row" data-id="'+l.id+'"><span class="t"><b>'+l.name+'</b><span class="d"><span class="'+chipCls(l)+'">'+l.result+'</span>'+l.blurb+'</span></span>'+pipsHTML(stat(l.id).streak)+'</button>').join('')+'</section>').join('');
+  if(o.groupOrder)groups.sort((a,b)=>{const ia=o.groupOrder.indexOf(a.name),ib=o.groupOrder.indexOf(b.name);return (ia<0?99:ia)-(ib<0?99:ib);});
+  groups.forEach(g=>{g.items=g.items.map((l,i)=>[l,i]).sort((x,y)=>((y[0].video?1:0)-(x[0].video?1:0))||(x[1]-y[1])).map(x=>x[0]);});
+  const hasVid=o.lines.some(l=>l.video);
+  $('lines').innerHTML=(hasVid?'<p class="legend"><span class="vtag">Video</span> Green rows are covered in the two videos.</p>':'')+
+   groups.map(g=>'<section class="group"><h2>'+g.name+(o.groupSub[g.name]?'<small>'+o.groupSub[g.name]+'</small>':'')+'</h2>'+
+    g.items.map(l=>'<button class="row'+(l.video?' vid':'')+'" data-id="'+l.id+'"><span class="t"><b>'+l.name+(l.video?'<span class="vtag">Video</span>':'')+'</b><span class="d"><span class="'+chipCls(l)+'">'+l.result+'</span>'+l.blurb+'</span></span>'+pipsHTML(stat(l.id).streak)+'</button>').join('')+'</section>').join('');
   $('mainsTog').setAttribute('aria-pressed',!!store.mains);
+  $('vidTog').setAttribute('aria-pressed',!!store.vidOnly);
 }
-function pickLine(avoidId){
-  const pool=curOp.lines.filter(l=>l.kind==='trap'||store.mains);
-  const ws=pool.map(l=>{const s=stat(l.id);let w=1+2*(3-Math.min(3,s.streak))+(s.lastBad?1:0);if(l.id===avoidId&&pool.length>1)w*=0.15;return w;});
-  let t=ws.reduce((a,b)=>a+b,0)*Math.random();
-  for(let i=0;i<pool.length;i++){t-=ws[i];if(t<=0)return pool[i];}
-  return pool[pool.length-1];
+function poolLines(){return curOp.lines.filter(l=>(l.kind==='trap'||store.mains)&&(!store.vidOnly||l.video));}
+function lineWeight(l,avoidId,pool){const t=stat(l.id);let w=1+2*(3-Math.min(3,t.streak))+(t.lastBad?1:0);if(l.id===avoidId&&pool&&pool.length>1)w*=0.15;return w;}
+function weightedPick(arr,wf){
+  const ws=arr.map(wf);let t=ws.reduce((a,b)=>a+b,0)*Math.random();
+  for(let i=0;i<arr.length;i++){t-=ws[i];if(t<=0)return arr[i];}
+  return arr[arr.length-1];
 }
+function pickLine(avoidId){const pool=poolLines();return weightedPick(pool,l=>lineWeight(l,avoidId,pool));}
 $('lines').addEventListener('click',e=>{const r=e.target.closest('.row');if(!r)return;startLine(curOp.lines.find(l=>l.id===r.dataset.id),false);});
-$('randomBtn').onclick=()=>startLine(pickLine(null),true);
+$('randomBtn').onclick=()=>startLine(null,true);
 $('mainsTog').onclick=()=>{store.mains=!store.mains;save();renderOpening();};
+$('vidTog').onclick=()=>{store.vidOnly=!store.vidOnly;save();renderOpening();};
 $('resetBtn').onclick=()=>{if(confirm('Reset all progress?')){store.stats={};save();renderOpening();}};
 $('opBack').onclick=()=>{renderMenu();showView('menu');};
 
@@ -527,18 +657,33 @@ $('opBack').onclick=()=>{renderMenu();showView('menu');};
 const mine=ply=>(ply%2===0)===(S.me==='w');
 function label(ply,san){return ply%2===0?(ply/2+1)+'.'+san:((ply-1)/2+1)+'…'+san;}
 function setStatus(main,sub,cls){const m=$('stMain');m.textContent=main||'';m.className='main'+(cls?' '+cls:'');$('stSub').textContent=sub||'';}
-function startLine(line,random){
+function startLine(line,random,avoidId){
   if(S)clearTimeout(S.timer);
   unlock();
-  const o=line.opening;
-  S={line,op:o,me:o.side,flip:o.side==='b',random,pos:startPos(),ply:0,hist:[],last:null,sel:null,targets:new Set(),
-     locked:false,done:false,mistakes:0,hints:0,hintLevel:0,bad:-1,timer:null,legal:[],expected:null};
+  const o=line?line.opening:curOp;
+  const cands=random?poolLines():[line];
+  S={line:random?cands[0]:line,cands,op:o,me:o.side,flip:o.side==='b',random,pos:startPos(),ply:0,hist:[],last:null,sel:null,targets:new Set(),
+     locked:false,done:false,mistakes:0,hints:0,hintLevel:0,bad:-1,timer:null,legal:[],expected:null,expectedSan:null,exps:[],avoidId:avoidId||null};
   showView('train');setSndBtn();
   $('tTitle').textContent=random?'Random drill':line.name;
   setStatus('Your move.',random?'The opponent picks the line. Play it from memory.':'Play it from memory.');
   S.legal=legal(S.pos);
-  if(mine(0)){S.expected=parseSAN(S.pos,line.sans[0]);render();}
+  if(mine(0)){setExpected();render();}
   else{S.locked=true;render();S.timer=setTimeout(oppMove,600);}
+}
+/* every distinct next move among the lines still possible */
+function setExpected(){
+  const seen=new Map();
+  S.cands.forEach(l=>{const san=l.sans[S.ply];if(san&&!seen.has(san))seen.set(san,parseSAN(S.pos,san));});
+  S.exps=[...seen.entries()].map(([san,m])=>({san,m}));
+  S.expectedSan=S.exps[0].san;S.expected=S.exps[0].m;
+  S.line=S.cands.find(l=>l.sans[S.ply]===S.expectedSan)||S.cands[0];
+}
+function narrow(san){
+  const ply=S.ply-1;
+  S.cands=S.cands.filter(l=>l.sans[ply]===san);
+  if(S.cands.length)S.line=S.cands[0];
+  return S.cands.find(l=>l.sans.length===S.ply)||null;
 }
 function render(){renderBoard();renderMoves();$('hintBtn').disabled=S.done||S.locked||S.hintLevel>=2;$('hintBtn').textContent=S.hintLevel===0?'Hint':'Show move';}
 function renderBoard(){
@@ -590,18 +735,36 @@ function applyMove(m,san){
 $('board').addEventListener('click',e=>{const s=e.target.closest('.sq');if(s)tap(+s.dataset.i);});
 function tap(i){
   if(!S||S.locked||S.done)return;
+  if(S.promoting){hidePromo();S.sel=null;S.targets=new Set();renderBoard();return;}
   const p=S.pos.b[i];
   if(S.sel!==null&&S.targets.has(i)){attempt(S.sel,i);return;}
   if(p&&isW(p)===(S.me==='w')&&i!==S.sel){S.sel=i;S.targets=new Set(S.legal.filter(m=>m.from===i).map(m=>m.to));}
   else{S.sel=null;S.targets=new Set();}
   S.bad=-1;renderBoard();
 }
-function attempt(from,to){
-  const m=S.legal.find(x=>x.from===from&&x.to===to);
-  S.sel=null;S.targets=new Set();
-  if(m&&S.expected&&m.from===S.expected.from&&m.to===S.expected.to&&m.promo===S.expected.promo)playMine(m);
-  else miss(to);
+function tryMove(m,to){
+  const hit=m&&S.exps.find(e=>e.m.from===m.from&&e.m.to===m.to&&e.m.promo===m.promo);
+  if(hit)playMine(m,hit.san);else miss(to);
 }
+function attempt(from,to){
+  const ms=S.legal.filter(x=>x.from===from&&x.to===to);
+  S.sel=null;S.targets=new Set();
+  if(ms.length>1){showPromo(ms,to);return;}
+  tryMove(ms[0],to);
+}
+/* promotion picker: the drill checks the piece you choose, so underpromotion traps are testable */
+function showPromo(ms,to){
+  S.promoting=true;renderBoard();
+  const p=$('promo'),w=S.me==='w';
+  p.innerHTML='<p>Promote to</p>'+['Q','R','B','N'].map(k=>'<button data-p="'+k+'" class="'+(w?'w':'b')+'" aria-label="'+PN[k]+'">'+GLYPH[k]+'</button>').join('');
+  p.hidden=false;
+  p.onclick=e=>{
+    const b=e.target.closest('button');if(!b)return;
+    p.hidden=true;S.promoting=false;
+    tryMove(ms.find(m=>m.promo===b.dataset.p),to);
+  };
+}
+function hidePromo(){const p=$('promo');if(p)p.hidden=true;if(S)S.promoting=false;}
 function miss(to){
   S.mistakes++;S.bad=to;
   const bd=$('board');bd.classList.remove('shake');void bd.offsetWidth;bd.classList.add('shake');
@@ -611,7 +774,7 @@ function miss(to){
 }
 /* Chess.com-style hint: first press nudges in words, second press shows the move */
 function nudge(m,san,ply){
-  const ln=S.line,op=S.op;
+  const ln=S.cands.find(l=>l.sans[ply]===san)||S.line,op=S.op;
   const t=(ln.hints&&ln.hints[san])||(op.groupHints&&op.groupHints[ln.group]&&op.groupHints[ln.group][san])||(op.hintsByPly&&op.hintsByPly[ply]);
   if(t)return t;
   const P=m.p.toUpperCase();
@@ -625,26 +788,29 @@ function nudge(m,san,ply){
 $('hintBtn').onclick=()=>{
   if(!S||S.done||S.locked||!S.expected||S.hintLevel>=2)return;
   S.hints++;S.hintLevel++;
-  if(S.hintLevel===1)setStatus(nudge(S.expected,S.line.sans[S.ply],S.ply),'Press Show move if you are really stuck.','hint');
+  if(S.hintLevel===1)setStatus(nudge(S.expected,S.expectedSan,S.ply),'Press Show move if you are really stuck.','hint');
   else setStatus('Here is the move.','','hint');
   render();
 };
-function playMine(m){
-  const line=S.line,san=line.sans[S.ply];
+function playMine(m,san){
   S.hintLevel=0;
   applyMove(m,san);
-  if(S.ply>=line.sans.length){finish();return;}
+  const done=narrow(san);
+  if(done){S.line=done;finish();return;}
   S.locked=true;
   setStatus('Good.','','ok');
   S.timer=setTimeout(oppMove,550);
 }
 function oppMove(){
   if(!S)return;
-  const line=S.line,san=line.sans[S.ply],m=parseSAN(S.pos,san),ply=S.ply;
+  const ply=S.ply;
+  const c=weightedPick(S.cands,l=>lineWeight(l,S.avoidId,S.cands));
+  const san=c.sans[ply],m=parseSAN(S.pos,san);
   applyMove(m,san);
   const name=S.me==='w'?'Black':'White';
-  if(S.ply>=line.sans.length){finish(name+' plays '+label(ply,san));return;}
-  S.legal=legal(S.pos);S.expected=parseSAN(S.pos,line.sans[S.ply]);S.locked=false;S.hintLevel=0;
+  const done=narrow(san);
+  if(done){S.line=done;finish(name+' plays '+label(ply,san));return;}
+  S.legal=legal(S.pos);setExpected();S.locked=false;S.hintLevel=0;
   setStatus(name+' plays '+label(ply,san),'Your move.');
   render();
 }
@@ -667,14 +833,14 @@ function finish(oppLast){
   sheet.innerHTML='<h3 class="'+(clean?'ok':'')+'">'+head+'</h3>'+title+'<p>'+line.idea+'</p><div class="meta">'+meta+'</div><div class="btns">'+btns+'</div>';
   sheet.hidden=false;
   const on=(id,fn)=>{const el=$(id);if(el)el.onclick=fn;};
-  on('shNext',()=>startLine(pickLine(line.id),true));
+  on('shNext',()=>startLine(null,true,line.id));
   on('shMenu',toList);
-  on('shAgain',()=>startLine(line,false));
+  on('shAgain',()=>S.random?startLine(null,true,line.id):startLine(line,false));
   setStatus(oppLast||(mate?'Checkmate.':'Line complete.'),'',mate||clean?'ok':'');
 }
 function toList(){if(S)clearTimeout(S.timer);S=null;renderOpening();showView('opening');}
 $('backBtn').onclick=toList;
-$('restartBtn').onclick=()=>{if(S)startLine(S.line,S.random);};
+$('restartBtn').onclick=()=>{if(S)S.random?startLine(null,true):startLine(S.cands.length===1?S.cands[0]:S.line,false);};
 
 /* ---- Boot ---- */
 renderMenu();showView('menu');
