@@ -1,13 +1,13 @@
 {
-  "name": "Opening Traps",
+  "name": "Openings",
   "short_name": "Openings",
-  "description": "Drill opening traps from memory.",
+  "description": "Chess opening trainer.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#1b2430",
-  "theme_color": "#1b2430",
+  "background_color": "#312e2b",
+  "theme_color": "#262522",
   "icons": [
     {
       "src": "icon-192.png",
